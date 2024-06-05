@@ -14,8 +14,9 @@ def test_img(net_g, datatest, args, best_acc, best_matrix):
     # testing
     test_loss = 0
     correct = 0
-    # data_loader = DataLoader(datatest, batch_size=args.bs)
-    data_loader = DataLoader(datatest, batch_size=len(datatest))
+
+    data_loader = DataLoader(datatest, batch_size=args.bs)
+    # data_loader = DataLoader(datatest, batch_size=len(datatest))
     l = len(data_loader)
     for idx, (data, target) in enumerate(data_loader):
         if torch.cuda.is_available() and args.gpu != -1:
@@ -29,14 +30,26 @@ def test_img(net_g, datatest, args, best_acc, best_matrix):
         y_pred = log_probs.data.max(1, keepdim=True)[1]
         correct += y_pred.eq(target.data.view_as(y_pred)).long().cpu().sum()
 
+    test_loss /= len(data_loader.dataset)
+    accuracy = 100.00 * correct / len(data_loader.dataset)
+
+    data_loader = DataLoader(datatest, batch_size=len(datatest))
+    l = len(data_loader)
+    for idx, (data, target) in enumerate(data_loader):
+        if torch.cuda.is_available() and args.gpu != -1:
+            data, target = data.cuda(args.device), target.cuda(args.device)
+        else:
+            data, target = data.cpu(), target.cpu()
+        log_probs = net_g(data)
+        # sum up batch loss
+        # get the index of the max log-probability
+        y_pred = log_probs.data.max(1, keepdim=True)[1]
+
         report = classification_report(target, y_pred, zero_division=0, output_dict=True)
         # print(report)
 
         if best_acc < report['accuracy']:
             best_acc = report['accuracy']
             best_matrix = report
-
-    test_loss /= len(data_loader.dataset)
-    accuracy = 100.00 * correct / len(data_loader.dataset)
     
     return accuracy, test_loss, best_acc, best_matrix
